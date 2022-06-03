@@ -18,7 +18,7 @@ The following directories should be in your path (already on datahub)
 ### Fies to be upoaded to gradescope:
 1.  `results.csv`
 2. `country_results.csv`
-3. `explanation.md`: this file must contain an english explanaton for how your code works. The explanation should be between 300 and 500 words long.
+3. `explanation.md`: this file must contain an english explanaton for how your code works. The explanation should be between 200 and 500 words long.
 
 The fourth file depends on whether or not you checkpoint is smaller enough for nbgrader.
 
