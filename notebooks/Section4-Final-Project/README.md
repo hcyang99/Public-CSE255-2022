@@ -16,8 +16,8 @@ The following directories should be in your path (already on datahub)
 ## How to submit your code
 
 ### Fies to be upoaded to gradescope:
-1.  `results.csv`
-2. `country_results.csv`
+1. `results.csv`
+2. `results_country.csv`
 3. `explanation.md`: this file must contain an english explanaton for how your code works. The explanation should be between 200 and 500 words long.
 
 The fourth file depends on whether or not you checkpoint is smaller enough for nbgrader.
@@ -28,7 +28,7 @@ The fourth file depends on whether or not you checkpoint is smaller enough for n
 Thus, you should only submit 4 files to Gradescope:
 
 1. `results.csv`
-2. `country_results.csv`
+2. `results_country.csv`
 3. `explanation.md`
 4. `code.tgz` OR `code.id`
 
@@ -55,7 +55,7 @@ Inside this directory, you should have the following subfolders:
 1. `code/`: contains:
    * `learn.py <poverty_dir>`: A script that performs the learning. it takes as input the file 
     `../public_tables/train.csv` and the images in the path `poverty_dir/anon_images/`. The learned predictor is stored in a pickled dictionary file `data/Checkpoint.pkl`. This file is later read by `predict.py`
-   * `predict.py <poverty_dir>`: A script that use `data/Checkpoint.pkl` and generates the files `data/results.csv` and `data/country_results.csv` according to the input files `../public_tables/random_test_reduct.csv` and `../public_data/country_test_reduct.csv`. The generated result files should be the same as the ones you submitted to Gradescope. 
+   * `predict.py <poverty_dir>`: A script that use `data/Checkpoint.pkl` and generates the files `data/results.csv` and `data/results_country.csv` according to the input files `../public_tables/random_test_reduct.csv` and `../public_data/country_test_reduct.csv`. The generated result files should be the same as the ones you submitted to Gradescope. 
    * Other files that your model needs.
 2. `data/`: contains `Checkpoint.pkl` which contains the learned XGBoost predictor that can reproduce the same result files you submitted to Gradescope.
 
