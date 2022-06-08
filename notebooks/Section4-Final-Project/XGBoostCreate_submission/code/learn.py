@@ -102,6 +102,8 @@ if __name__=='__main__':
     test_df = sub_df[~train_selector]
     Test = encoded_dataset(image_dir,test_df,tree,label_col='label').data
 
+    param['max_depth']=2
+    param['num_round']=10
     param['num_round']=10
     log10=simple_bootstrap(Train,Test,param,ensemble_size=30)
     param['num_round']=100
@@ -144,6 +146,8 @@ if __name__=='__main__':
     test_df = sub_df[~train_selector]
     Test = encoded_dataset(image_dir,test_df,tree,label_col='label').data
 
+    param['max_depth']=2
+    param['num_round']=10
     param['num_round']=10
     log10=simple_bootstrap(Train,Test,param,ensemble_size=30)
     param['num_round']=100
