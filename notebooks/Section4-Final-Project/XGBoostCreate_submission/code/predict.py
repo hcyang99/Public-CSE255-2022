@@ -34,62 +34,98 @@ poverty_dir=sys.argv[1]
 image_dir=poverty_dir+'anon_images/'
 depth=8   #for KDTree
 
-import pickle as pkl
-pickle_file='data/Checkpoint.pk'
-D=pkl.load(open(pickle_file,'rb'))
+# Loading model
+all_pkl = '../data/Checkpoint.pk'
+D = pkl.load(open(all_pkl, 'rb'))
 
-## add D's elements as python variables 
-for k in D:
-    globals()[k]=D[k]
-scaling_mean=mean
-scaling_std=std
+D_urban = D[0]
+D_rural = D[1]
 
-#read out the ensemble of classifiers.
-bst_list=[x['bst'] for x in styled_logs[1]['log']]
+scaling_mean_urban = D_urban['mean']
+scaling_std_urban = D_urban['std']
+scaling_mean_rural = D_rural['mean']
+scaling_std_rural = D_rural['std']
+
+bst_list_urban = [x['bst'] for x in D_urban['styled_logs'][1]['log']]
+bst_list_rural = [x['bst'] for x in D_rural['styled_logs'][1]['log']]
+
+tree_urban = D_urban['tree']
+tree_rural = D_rural['tree']
 
 T.mark('read pickle file')
+
+
 # ## Iterate over test sets
-folds=[{'in':'country_test_reduct.csv','out':'results_country.csv'},
-      {'in':'random_test_reduct.csv','out':'results.csv'}]
+folds = [{'in':'country_test_reduct.csv','out':'results_country.csv'},
+    {'in':'random_test_reduct.csv','out':'results.csv'}]
 
-for fold_i in range(len(folds)):
-    fold=folds[fold_i]
+for fold in folds:
+    # Loading test set
+    test_csv = f'../public_tables/{fold["in"]}'
+    test = pd.read_csv(test_csv, index_col=0)
 
-    #load table entries
-    test_csv=f'../public_tables/{fold["in"]}'
-    test=pd.read_csv(test_csv,index_col=0)
-    test.index=test['filename']
-    test.shape
+    test_urban = test[test['urban'] == True]
+    test_rural = test[test['urban'] == False]
 
-    out=pd.DataFrame()
-    out['filename'] = test['filename']
-    out['urban']=test['urban']
-    out['pred_wo_abstention']=0
-    out.set_index('filename', inplace=True)
+    out_urban = pd.DataFrame()
+    out_urban['filename'] = test_urban['filename']
+    out_urban['urban'] = test_urban['urban']
+    out_urban['pred_wo_abstention'] = 0
+    out_urban.set_index('filename', inplace=True)
 
-    ## Encode all data using encoding tree
-    Enc_data=encoded_dataset(image_dir,out,tree,label_col='pred_wo_abstention')
+    out_rural = pd.DataFrame()
+    out_rural['filename'] = test_rural['filename']
+    out_rural['urban'] = test_rural['urban']
+    out_rural['pred_wo_abstention'] = 0
+    out_rural.set_index('filename', inplace=True)
 
-    data=to_DMatrix(Enc_data.data)
-    Preds=zeros([Enc_data.data.shape[0],len(bst_list)])
-    for i in range(len(bst_list)):
-        Preds[:,i]=bst_list[i].predict(data,output_margin=True)
-    Preds=(Preds-scaling_mean)/scaling_std # apply overall score scaling
 
-    _mean=np.mean(Preds,axis=1)
-    _std=np.std(Preds,axis=1)
+    # Encode data
+    enc_data_urban = encoded_dataset(image_dir, out_urban, tree_urban, label_col='pred_wo_abstention')
+    enc_data_rural = encoded_dataset(image_dir, out_rural, tree_rural, label_col='pred_wo_abstention')
 
-    pred_wo_abstention=(2*(_mean>0))-1
-    pred_with_abstention=copy(pred_wo_abstention)
-    pred_with_abstention[_std>abs(_mean)]=0
+    data_urban = to_DMatrix(enc_data_urban.data)
+    data_rural = to_DMatrix(enc_data_rural.data)
 
-    out['pred_with_abstention'] = pred_with_abstention
-    out['pred_wo_abstention'] = pred_wo_abstention
 
-    outFile=f'data/{fold["out"]}'
+    # Predict
+    preds_urban = zeros([enc_data_urban.data.shape[0], len(bst_list_urban)])
+    preds_rural = zeros([enc_data_rural.data.shape[0], len(bst_list_rural)])
+
+
+    for i in range(len(bst_list_urban)):
+        preds_urban[:, i] = bst_list_urban[i].predict(data_urban, output_margin=True)
+    preds_urban = (preds_urban - scaling_mean_urban) / scaling_std_urban
+
+    for i in range(len(bst_list_rural)):
+        preds_rural[:, i] = bst_list_rural[i].predict(data_rural, output_margin=True)
+    preds_rural = (preds_rural - scaling_mean_rural) / scaling_std_rural
+
+
+    urban_mean = np.mean(preds_urban, axis=1)
+    urban_std = np.std(preds_urban, axis=1)
+    pred_wo_abstention_urban = (2*(urban_mean>0))-1
+    pred_with_abstention_urban = copy(pred_wo_abstention_urban)
+    pred_with_abstention_urban[urban_std > abs(urban_mean)] = 0
+
+    rural_mean = np.mean(preds_rural, axis=1)
+    rural_std = np.std(preds_rural, axis=1)
+    pred_wo_abstention_rural = (2*(rural_mean>0))-1
+    pred_with_abstention_rural = copy(pred_wo_abstention_rural)
+    pred_with_abstention_rural[rural_std > abs(rural_mean)] = 0
+
+
+    out_urban['pred_with_abstention'] = pred_with_abstention_urban
+    out_urban['pred_wo_abstention'] = pred_wo_abstention_urban
+
+    out_rural['pred_with_abstention'] = pred_with_abstention_rural
+    out_rural['pred_wo_abstention'] = pred_wo_abstention_rural
+
+    
+    # Merge & save output
+    out = pd.concat([out_urban, out_rural])
+    outFile=f'../data/{fold["out"]}'
     out.to_csv(outFile)
     print('\n\n'+'-'*60)
     print(outFile)
     T.mark('generated '+outFile)
-
-

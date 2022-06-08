@@ -17,6 +17,7 @@ import pickle as pkl
 import sys
 from time import time
 import os
+from copy import deepcopy
 
 class timer:
     def __init__(self):
@@ -84,18 +85,97 @@ if __name__=='__main__':
     Enc_data=encoded_dataset(image_dir,df,tree,label_col='label')
     T.mark('encoded images')
     D=DataSplitter(Enc_data.data)
-    styled_logs=train_boosted_trees(D)
 
-    _mean,_std=plot_scores(styled_logs,title='All')
-    T.mark('trained trees')
-    
-    os.makedirs('data', exist_ok=True)
+    # Training on urban
+    urban=True
+    area= 'Urban' if urban else 'Rural'
+    selector=df['urban']==urban
+    subData=D.get_subset(selector)
+    subD=DataSplitter(subData)
+
+    sub_df = df[df['urban']==urban]
+    train_selector = np.random.rand(sub_df.shape[0]) > 0.3
+    train_df = sub_df[train_selector]
+    Train = encoded_dataset(image_dir,train_df,tree,label_col='label').data
+    Train_augmented = encoded_dataset(image_dir,train_df,tree,label_col='label', augmentation=True).data
+    Train = np.concatenate((Train,Train_augmented),axis=0)
+    test_df = sub_df[~train_selector]
+    Test = encoded_dataset(image_dir,test_df,tree,label_col='label').data
+
+    param['num_round']=10
+    log10=simple_bootstrap(Train,Test,param,ensemble_size=30)
+    param['num_round']=100
+    log100=simple_bootstrap(Train,Test,param,ensemble_size=30)
+
+    styled_logs=[
+        {   'log':log10,
+            'style':['g:','g-'],
+            'label':'10 iterations',
+            'label_color':'g'
+        },
+        {   'log':log100,
+            'style':['b:','b-'],
+            'label':'100 iterations',
+            'label_color':'b'
+        }
+    ]
+
+    _mean,_std=plot_scores(styled_logs,title=f'{area}Only: Split into train and test at random')
+
+    dump_urban = deepcopy({'styled_logs':styled_logs,
+        'tree':tree,
+        'mean':_mean,
+        'std':_std})
+    T.mark('Trained on urban')
+
+    # Training on rural
+    urban=False
+    area= 'Urban' if urban else 'Rural'
+    selector=df['urban']==urban
+    subData=D.get_subset(selector)
+    subD=DataSplitter(subData)
+
+    sub_df = df[df['urban']==urban]
+    train_selector = np.random.rand(sub_df.shape[0]) > 0.3
+    train_df = sub_df[train_selector]
+    Train = encoded_dataset(image_dir,train_df,tree,label_col='label').data
+    Train_augmented = encoded_dataset(image_dir,train_df,tree,label_col='label', augmentation=True).data
+    Train = np.concatenate((Train,Train_augmented),axis=0)
+    test_df = sub_df[~train_selector]
+    Test = encoded_dataset(image_dir,test_df,tree,label_col='label').data
+
+    param['num_round']=10
+    log10=simple_bootstrap(Train,Test,param,ensemble_size=30)
+    param['num_round']=100
+    log100=simple_bootstrap(Train,Test,param,ensemble_size=30)
+
+    styled_logs=[
+        {   'log':log10,
+            'style':['y:','y-'],
+            'label':'10 iterations',
+            'label_color':'y'
+        },
+        {   'log':log100,
+            'style':['m:','m-'],
+            'label':'100 iterations',
+            'label_color':'m'
+        }
+    ]
+
+    _mean,_std=plot_scores(styled_logs,title=f'{area}Only: Split into train and test at random')
+
     pickle_file='data/Checkpoint.pk'
-    Dump={'styled_logs':styled_logs,
-         'tree':tree,
-         'mean':_mean,
-         'std':_std}
-    pkl.dump(Dump,open(pickle_file,'wb'))
+    dump_rural=deepcopy({'styled_logs':styled_logs,
+        'tree':tree,
+        'mean':_mean,
+        'std':_std})
+    T.mark('Trained on rural')
+
+
+    # Dump pickle file    
+    os.makedirs('../data', exist_ok=True)
+    pickle_file='../data/Checkpoint.pk'
+    pkl.dump([dump_urban, dump_rural],open(pickle_file,'wb'))
     T.mark('generated pickle file')
     print('picklefile=',pickle_file)
     T._print()
