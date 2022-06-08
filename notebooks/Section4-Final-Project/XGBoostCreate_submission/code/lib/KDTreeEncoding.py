@@ -112,7 +112,7 @@ def encode_image(file,tree, rot=0):
 
 class encoded_dataset:
 
-    def __init__(self,image_dir,df,tree,depth=8,label_col='rich', augmentation=False):
+    def __init__(self,image_dir,df,tree,depth=12,label_col='rich', augmentation=False):
 
         def bin2int(c):
             ans=0

@@ -64,7 +64,7 @@ def train_boosted_trees(D):
 if __name__=='__main__':
     poverty_dir=sys.argv[1]
     T=timer()
-    depth=8   #for KDTree
+    depth=12   #for KDTree
 
     ## load file list
     image_dir=poverty_dir+'/anon_images'
@@ -79,7 +79,7 @@ if __name__=='__main__':
     df.index=df['filename']
 
     ## Generate encoding tree
-    train_size,tree=train_encoder(files,max_images=500,tree_depth=depth)
+    train_size,tree=train_encoder(files,max_images=1000,tree_depth=depth)
     T.mark('generated encoder tree')
     ## Encode all data using encoding tree
     Enc_data=encoded_dataset(image_dir,df,tree,label_col='label')
