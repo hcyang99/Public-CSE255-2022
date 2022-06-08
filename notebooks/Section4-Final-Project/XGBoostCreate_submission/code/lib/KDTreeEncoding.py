@@ -96,22 +96,17 @@ def train_encoder(files,max_images=200,tree_depth=8):
     tree=KD_tree(data,depth=tree_depth)
     return train_size,tree
 
-def encode_image(file,tree, augmentation=False):
-    M=load(file)
-    Image=M['x']
-    if augmentation == True:
-        kind = random.randint(3)
-        if kind == 0:
-            angle = random.random() * 0.2 - 0.1
-            angle += random.randint(4)
-            angle *= 90
-            Image= rotate(Image, angle, axes=(1, 2))
-        elif kind == 1:
-            Image= shift(Image, (0, random.randint(-5, 5), random.randint(-5, 5)))
-        elif kind == 2:
-            scale = random.random() * 0.2 + 0.9
-            Image = zoom(Image, (1, scale, scale))
-    pixels=Image.reshape((Image.shape[0], -1)).T
+def encode_image(file,tree, rot=0):
+    m=load(file)
+    img = m['x']
+    img = rot90(img, k=rot, axes=(1,2))
+    img_p = img.reshape((img.shape[0], -1)).T
+    plist = [img_p]
+    for i in range(5):
+        img = img.reshape(8, img.shape[1]//2, 2, img.shape[2]//2, 2).mean(axis=(2,4))
+        img_p = img.reshape((img.shape[0], -1)).T
+        plist.append(img_p)
+    pixels = concatenate(plist, axis=0)
     code=tree.calc_encoding(pixels)
     return code
 
@@ -127,27 +122,46 @@ class encoded_dataset:
             return ans
   
         self.df=df
-        self.rows=df.shape[0]
+        if augmentation:
+            self.rows=df.shape[0]*4
+        else:
+            self.rows=df.shape[0]
         self.cols=2**(depth+1)+1
         data=zeros([self.rows,self.cols]) #code length +1 for label
 
         j=0
         for filename,row in df.iterrows():
             filepath=f"{image_dir}/{filename}"
-            code = encode_image(filepath,tree, augmentation)
+            
+            if augmentation:
+                for rot in range(4):
+                    code = encode_image(filepath,tree, rot)
+                    V=zeros(self.cols-1)
+                    for c,a in code:
+                        V[bin2int(c)]=a
 
-            V=zeros(self.cols-1)
-            for c,a in code:
-                V[bin2int(c)]=a
+                    label=row[label_col]*1
 
-            label=row[label_col]*1
+                    data[j,-1]=label
+                    data[j,:-1]=V
 
-            data[j,-1]=label
-            data[j,:-1]=V
+                    if((j+1) %10==0):
+                        print(j,filename,end='\r')
+                    j+=1
+            else:
+                code = encode_image(filepath,tree)
+                V=zeros(self.cols-1)
+                for c,a in code:
+                    V[bin2int(c)]=a
 
-            if((j+1) %10==0):
-                print(j,filename,end='\r')
-            j+=1
+                label=row[label_col]*1
+
+                data[j,-1]=label
+                data[j,:-1]=V
+
+                if((j+1) %10==0):
+                    print(j,filename,end='\r')
+                j+=1
 
         self.data=data
 
