@@ -1,5 +1,6 @@
 from numpy import *
 from numpy.random import choice
+from scipy.ndimage import rotate, shift, zoom
 class KD_tree:
     """A class that represents the whole KDtree,
     Points to the root KD_node"""
@@ -95,16 +96,28 @@ def train_encoder(files,max_images=200,tree_depth=8):
     tree=KD_tree(data,depth=tree_depth)
     return train_size,tree
 
-def encode_image(file,tree):
+def encode_image(file,tree, augmentation=False):
     M=load(file)
     Image=M['x']
+    if augmentation == True:
+        kind = random.randint(3)
+        if kind == 0:
+            angle = random.random() * 0.2 - 0.1
+            angle += random.randint(4)
+            angle *= 90
+            Image= rotate(Image, angle, axes=(1, 2))
+        elif kind == 1:
+            Image= shift(Image, (0, random.randint(-5, 5), random.randint(-5, 5)))
+        elif kind == 2:
+            scale = random.random() * 0.2 + 0.9
+            Image = zoom(Image, (1, scale, scale))
     pixels=Image.reshape((Image.shape[0], -1)).T
     code=tree.calc_encoding(pixels)
     return code
 
 class encoded_dataset:
 
-    def __init__(self,image_dir,df,tree,depth=8,label_col='rich'):
+    def __init__(self,image_dir,df,tree,depth=8,label_col='rich', augmentation=False):
 
         def bin2int(c):
             ans=0
@@ -121,7 +134,7 @@ class encoded_dataset:
         j=0
         for filename,row in df.iterrows():
             filepath=f"{image_dir}/{filename}"
-            code = encode_image(filepath,tree)
+            code = encode_image(filepath,tree, augmentation)
 
             V=zeros(self.cols-1)
             for c,a in code:
@@ -143,7 +156,7 @@ class encoded_dataset:
 
     def get_slice(self,selection):
         assert selection.shape[0] == self.data.shape[0]
-        S=data[selection,:]
+        S=self.data[selection,:]
         return S
         
 
